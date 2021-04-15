@@ -78,12 +78,21 @@ class Fletcher_Reeves:
         range_begin = self.point + 50
         range_end = self.point - 50
         dich = dichotomy(self.fun, range_begin, range_end)
+        min_alpha = dich.get_minimum()
         if (abs(d[0]) < self.epsylon):
             self.return_results()
         dk = -d[0]
+        point_value = self.calculate_value_in_point()
+        print(point_value)
         
         return 1
         
+    def calculate_value_in_point(self):
+        function_str = str(self.fun)
+        function_str = function_str.replace( "x", str(self.point) )
+        function_str = function_str.replace( " ", "" )
+        value = compile(function_str, "<string>", "eval")
+        return eval(value)        
         
     def return_results(self, return_values):
         #unused
@@ -93,11 +102,15 @@ class Fletcher_Reeves:
 class dichotomy:
     def __init__(self, fun, rb, re):
         self.function = fun
-        self.range_begin = rb
-        self.range_end = re
-    
+        self.rb = rb
+        self.re = re
+        self.minimum = 0
+        self.calculate()
+        
+
     def calculate(self):
         results = []
+        results_array_len = len(results)
         tolerance = 0.00001
         range_begin = self.rb
         range_end = self.re
@@ -107,39 +120,39 @@ class dichotomy:
             delta = distance/ 4
             cl = 0.5 * (range_begin + range_end) - delta
             cr = 0.5 * (range_begin + range_end) + delta               
-            frb = f(range_begin)
-            fre = f(range_end)
-            fcl = f(cl)
-            fcr = f(cr)              
+            frb = self.f(range_begin)
+            fre = self.f(range_end)
+            fcl = self.f(cl)
+            fcr = self.f(cr)              
         
             if ((frb >= fcl) and (frb >= fre) and (fcl <= fcr)) :
-                print ("1")
+                #print ("1")
                 range_begin = cl
             elif ((frb >= fcl) and (frb >= fre) and (fcl >= fcr)) :
-                print ("2")
+                #print ("2")
                 range_begin =  cl
             elif ((frb <= fcl) and (frb <= fre) and (fcl >= fcr)):
-                print ("3")
+                #print ("3")
                 range_begin = cl    
             elif ((frb >= fcl) and (frb >= fre) and (fcl >= fcr)):
-                print ("4")
+                #print ("4")
                 range_begin = cl
             elif ((frb >= fcl) and (frb <= fre) and (fcl <= fcr)):
-                print ("5")
+                #print ("5")
                 range_end = cr
             elif ((frb <= fcl) and (frb <= fre) and (fcl <= fcr)):
-                print ("6")
+                #print ("6")
                 range_end = cr                    
             elif (fre < fcl) and (fcr> frb):
-                print ("7")
+                #print ("7")
                 self.not_unimodal(range_begin, cl)
                 self.not_unimodal(cr, range_end)
                 self.not_unimodal(cl, cr)
             elif ((frb >= fcl) and (frb < fre) and (fcl <= fcr)):
-                print ("8")
+                #print ("8")
                 range_begin = cl              
             elif ((frb >= fcl) and (frb < fre) and (fcl > fcr)):
-                print ("9")
+                #print ("9")
                 range_end = cr                    
             distance = np.abs(range_begin-range_end)
     
@@ -148,12 +161,8 @@ class dichotomy:
         results_array_len += 1
         results.insert(results_array_len, range_end)
         
-        if( len(results) > 3):
-            while (j <= len(results)):
-                Label(frame, text = ( results[j], results[j+1])).grid(row = grid)
-                j += 2
-                grid += 2
-            return "There was many results"
+        self.minimum = (abs(range_begin) + abs(range_end))/2
+
         return  range_begin, range_end    
     
     def not_unimodal(self, rb, re):
@@ -166,39 +175,39 @@ class dichotomy:
             delta = distance/ 4
             cl = 0.5 * (range_begin + range_end) - delta
             cr = 0.5 * (range_begin + range_end) + delta               
-            frb = f(range_begin)
-            fre = f(range_end)
-            fcl = f(cl)
-            fcr = f(cr)              
+            frb = self.f(range_begin)
+            fre = self.f(range_end)
+            fcl = self.f(cl)
+            fcr = self.f(cr)              
     
             if ((frb >= fcl) and (frb >= fre) and (fcl <= fcr)) :
-                print ("1")
+                #print ("1")
                 range_begin = cl
             elif ((frb >= fcl) and (frb >= fre) and (fcl >= fcr)) :
-                print ("2")
+                #print ("2")
                 range_begin =  cl
             elif ((frb <= fcl) and (frb <= fre) and (fcl >= fcr)):
-                print ("3")
+                #print ("3")
                 range_begin = cl    
             elif ((frb >= fcl) and (frb >= fre) and (fcl >= fcr)):
-                print ("4")
+                #print ("4")
                 range_begin = cl
             elif ((frb >= fcl) and (frb <= fre) and (fcl <= fcr)):
-                print ("5")
+                #print ("5")
                 range_end = cr
             elif ((frb <= fcl) and (frb <= fre) and (fcl <= fcr)):
-                print ("6")
+                #print ("6")
                 range_end = cr                    
             elif (fre < fcl) and (fcr> frb):
-                print ("7")
+                #print ("7")
                 self.not_unimodal(range_begin, cl)
                 self.not_unimodal(cr, range_end)
                 self.not_unimodal(cl, cr)
             elif ((frb >= fcl) and (frb < fre) and (fcl <= fcr)):
-                print ("8")
+                #print ("8")
                 range_begin = cl              
             elif ((frb >= fcl) and (frb < fre) and (fcl > fcr)):
-                print ("9")
+                #print ("9")
                 range_end = cr                    
     
         distance = np.abs(range_begin-range_end)
@@ -207,6 +216,16 @@ class dichotomy:
         results.insert(results_array_len, range_begin)
         results_array_len += 1
         results.insert(results_array_len, range_end)        
+
+    def f(self, x):
+        function_str = str(self.function)
+        function_str = function_str.replace( "x", str(x) )
+        function_str = function_str.replace( " ", "" )
+        code = compile(function_str, "<string>", "eval")
+        return eval(code)
+    
+    def get_minimum(self):
+        return self.minimum
 
 
 ########################## MAIN #########################
