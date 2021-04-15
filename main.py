@@ -4,92 +4,230 @@ import numpy as np
 ########################## GLOBALS #############################
 x = Symbol('x')
 y = Symbol ('y')    
-########################## DERIVATIVES #########################
-class derivative:
-    def __init__(self, function):
-        self.function = function
-        self.calculate_derivative()
-        
-    def calculate_derivative(self):
-        function_str = str(self.function)
-        #print(function_str)
-        if (function_str.find('x' , 0) != -1):
-            xprime = self.function.diff(x)
-            print(xprime)
-            if (function_str.find('y', 0) != -1):
-                yprime = self.function.diff(y)
-                print(yprime)      
-        else: 
-            print('Your function must contain atleast one x parameter')
-                
-                #function = 3*x**2 + 1 - 1*x + 20*y**4            
-                #f = lambdify(x, yprime, 'numpy')
-                #print(f(np.ones(5)))
-
+results = []
+######################### CONVERSION #############################
 def convert_function(fun):
-    '''
-    parameters_places = []
-    parameters_places_array_length = 0
-    last_found = 0
-    
-    while (fun.find("x" , last_found + 1) != -1):
-        print('Im looking for x')
-        found = (fun.find("x" , last_found))
-        parameters_places.insert(parameters_places_array_length, found)
-        last_found = found + 1
-        parameters_places_array_length += 1
-        #fun = fun.replace( "x", "1" )
-        print(fun.replace( "x", "1" ))
-     
-    last_found = 0
-    
-    while (fun.find("y" , last_found) != -1):
-        print('Im looking for y')
-        found = (fun.find("y" , last_found))
-        parameters_places.insert(parameters_places_array_length, found)
-        last_found = found + 1
-        parameters_places_array_length += 1
-        fun.replace( "y", "1" )
-    '''   
-
-    #print('Before sympify => ',fun)   
     fun = sympify(fun, evaluate = False)
-    #print(fun)
+
     return fun
 
+def convert_values(values_string):
+    values_array = []
+    values_string.replace( " ", "" )
+    separator = values_string.find("," , 0)
+    values_array.append(float(values_string[0:separator]))
+    values_array.append(float(values_string[separator+1:]))
+    
+    return values_array
 
-########################## FLETCHER-REEVES #########################
-                
-class fletcher_Reeves:
-    def __init__(self, point, e):
-        self.derivative = []
+########################## DERIVATIVES #########################
+class gradient:
+    def __init__(self, function, values):
+        self.function = function
+        self.derivatives = []
+        self.values = values
+        self.direction = self.calculate_gradient()
+
+    def calculate_derivative(self):
+        function_str = str(self.function)
+
+        if (function_str.find('x' , 0) != -1):
+            xprime = self.function.diff(x)
+            self.derivatives.append(xprime)
+            
+            if (function_str.find('y', 0) != -1):
+                yprime = self.function.diff(y)
+                self.derivatives.append(yprime)
+            return 0
+    
+        else: 
+            print('Your function must contain atleast one x parameter')
+            return 0
+
+    def calculate_gradient(self):
+        vector = []
+        self.calculate_derivative()
+        for derivative in self.derivatives:
+            x_value = self.values[0]
+            x_value = str(x_value)
+            y_value = self.values[1]
+            y_value = str(y_value)            
+            derivative = str(derivative)
+            derivative = derivative.replace( " ", "" )
+            derivative = derivative.replace("x", x_value)
+            derivative = derivative.replace("y", y_value)
+            vector.append(eval(derivative))
+        return vector
+    
+    def get_direction(self):
+        return self.direction
+
+########################## FLETCHER-REEVES #########################  
+class Fletcher_Reeves:
+    def __init__(self, point, e, fun, values):
         self.point = point
         self.epsylon = e
+        self.k = 1    
+        self.fun = fun
+        self.values = values
         self.calculate()
         
-    def calculate():
-        if(abs(grad) < e):
-            self.results()
-        xi = xi_1 +labmdai*si
+    def calculate(self):
+        grad = gradient(self.fun, self.values)
+        d = gradient.get_direction(grad)
+        range_begin = self.point + 50
+        range_end = self.point - 50
+        dich = dichotomy(self.fun, range_begin, range_end)
+        if (abs(d[0]) < self.epsylon):
+            self.return_results()
+        dk = -d[0]
         
-            
-    def results(e):
+        return 1
+        
+        
+    def return_results(self, return_values):
         #unused
         return e
-    
-    
-    
 
-###################### MAIN #################
-#function = 3*y**2 + 1 - 1*y
+########################## DICHOTOMY #########################
+class dichotomy:
+    def __init__(self, fun, rb, re):
+        self.function = fun
+        self.range_begin = rb
+        self.range_end = re
+    
+    def calculate(self):
+        results = []
+        tolerance = 0.00001
+        range_begin = self.rb
+        range_end = self.re
+        distance = np.abs(range_begin-range_end) 
+
+        while (distance >= tolerance):
+            delta = distance/ 4
+            cl = 0.5 * (range_begin + range_end) - delta
+            cr = 0.5 * (range_begin + range_end) + delta               
+            frb = f(range_begin)
+            fre = f(range_end)
+            fcl = f(cl)
+            fcr = f(cr)              
+        
+            if ((frb >= fcl) and (frb >= fre) and (fcl <= fcr)) :
+                print ("1")
+                range_begin = cl
+            elif ((frb >= fcl) and (frb >= fre) and (fcl >= fcr)) :
+                print ("2")
+                range_begin =  cl
+            elif ((frb <= fcl) and (frb <= fre) and (fcl >= fcr)):
+                print ("3")
+                range_begin = cl    
+            elif ((frb >= fcl) and (frb >= fre) and (fcl >= fcr)):
+                print ("4")
+                range_begin = cl
+            elif ((frb >= fcl) and (frb <= fre) and (fcl <= fcr)):
+                print ("5")
+                range_end = cr
+            elif ((frb <= fcl) and (frb <= fre) and (fcl <= fcr)):
+                print ("6")
+                range_end = cr                    
+            elif (fre < fcl) and (fcr> frb):
+                print ("7")
+                self.not_unimodal(range_begin, cl)
+                self.not_unimodal(cr, range_end)
+                self.not_unimodal(cl, cr)
+            elif ((frb >= fcl) and (frb < fre) and (fcl <= fcr)):
+                print ("8")
+                range_begin = cl              
+            elif ((frb >= fcl) and (frb < fre) and (fcl > fcr)):
+                print ("9")
+                range_end = cr                    
+            distance = np.abs(range_begin-range_end)
+    
+        results_array_len += 1
+        results.insert(results_array_len, range_begin)
+        results_array_len += 1
+        results.insert(results_array_len, range_end)
+        
+        if( len(results) > 3):
+            while (j <= len(results)):
+                Label(frame, text = ( results[j], results[j+1])).grid(row = grid)
+                j += 2
+                grid += 2
+            return "There was many results"
+        return  range_begin, range_end    
+    
+    def not_unimodal(self, rb, re):
+        tolerance = 0.00001
+        range_begin = rb
+        range_end = re
+        distance = np.abs(range_begin-range_end) 
+    
+        while (distance >= tolerance):
+            delta = distance/ 4
+            cl = 0.5 * (range_begin + range_end) - delta
+            cr = 0.5 * (range_begin + range_end) + delta               
+            frb = f(range_begin)
+            fre = f(range_end)
+            fcl = f(cl)
+            fcr = f(cr)              
+    
+            if ((frb >= fcl) and (frb >= fre) and (fcl <= fcr)) :
+                print ("1")
+                range_begin = cl
+            elif ((frb >= fcl) and (frb >= fre) and (fcl >= fcr)) :
+                print ("2")
+                range_begin =  cl
+            elif ((frb <= fcl) and (frb <= fre) and (fcl >= fcr)):
+                print ("3")
+                range_begin = cl    
+            elif ((frb >= fcl) and (frb >= fre) and (fcl >= fcr)):
+                print ("4")
+                range_begin = cl
+            elif ((frb >= fcl) and (frb <= fre) and (fcl <= fcr)):
+                print ("5")
+                range_end = cr
+            elif ((frb <= fcl) and (frb <= fre) and (fcl <= fcr)):
+                print ("6")
+                range_end = cr                    
+            elif (fre < fcl) and (fcr> frb):
+                print ("7")
+                self.not_unimodal(range_begin, cl)
+                self.not_unimodal(cr, range_end)
+                self.not_unimodal(cl, cr)
+            elif ((frb >= fcl) and (frb < fre) and (fcl <= fcr)):
+                print ("8")
+                range_begin = cl              
+            elif ((frb >= fcl) and (frb < fre) and (fcl > fcr)):
+                print ("9")
+                range_end = cr                    
+    
+        distance = np.abs(range_begin-range_end)
+    
+        results_array_len += 1
+        results.insert(results_array_len, range_begin)
+        results_array_len += 1
+        results.insert(results_array_len, range_end)        
+
+
+########################## MAIN #########################
+'''
 print("Pass the function")
 function_str = input()
 print("Pass the point")
 point = input()
+print("Pass e")
+e = input()
+print("Pass the parameter or parameters")
+parameters = input()
+'''
+function_str = "2*x**3"
+point = "19"
+e = "10"
+parameters = '20'
+
+
 fun = convert_function(function_str)
-#function_str = function_str.replace( "x", x )
-#function_str = function_str.replace( "y", y )
-#function = float(function_str)
+parameters = convert_values(parameters)
+FR = Fletcher_Reeves(float(point), float(e), (fun), parameters)
 
 
-derivatives = derivative(fun)
