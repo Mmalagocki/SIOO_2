@@ -1,5 +1,6 @@
 from sympy import *
 import numpy as np
+import math
 
 ########################## GLOBALS #############################
 x = Symbol('x')
@@ -64,8 +65,10 @@ class gradient:
 
 ########################## FLETCHER-REEVES #########################  
 class Fletcher_Reeves:
-    def __init__(self, point, e, fun, values):
-        self.point = point
+    def __init__(self, points, e, fun, values):
+        points = convert_values(points)
+        print(points)
+        self.points = points
         self.epsylon = e
         self.k = 1    
         self.fun = fun
@@ -75,15 +78,30 @@ class Fletcher_Reeves:
     def calculate(self):
         grad = gradient(self.fun, self.values)
         d = gradient.get_direction(grad)
-        range_begin = self.point + 50
-        range_end = self.point - 50
+        range_begin = []
+        range_end = []
+
+        for point in self.points:
+            range_begin.append(point + 50)
+            range_end.append(point - 50)
+        print(range_begin[0], "   ", range_end[0])
         dich = dichotomy(self.fun, range_begin, range_end)
-        min_alpha = dich.get_minimum()
-        if (abs(d[0]) < self.epsylon):
-            self.return_results()
-        dk = -d[0]
         point_value = self.calculate_value_in_point()
+        min_alpha = dich.get_minimum()
+        
+        norm = math.sqrt(pow(d[o], 2) + pow(d[1], 2))
+        if (norm< self.epsylon):
+            self.return_results()
+        dk = -d[0]  
+        grad2 = gradient(self.fun, self.values)
+        self.point = point_value + min_alpha*dk
+        eta = (d[0])
+        dk_1    
+        '''
         print(point_value)
+        print(dk)
+        print(min_alpha)
+        '''
         
         return 1
         
@@ -112,58 +130,61 @@ class dichotomy:
         results = []
         results_array_len = len(results)
         tolerance = 0.00001
-        range_begin = self.rb
-        range_end = self.re
-        distance = np.abs(range_begin-range_end) 
+        ranges_begins = self.rb
+        ranges_ends = self.re
+        distance = np.abs(range_begin[0]-range_end[0]) 
+        i = 0
 
-        while (distance >= tolerance):
-            delta = distance/ 4
-            cl = 0.5 * (range_begin + range_end) - delta
-            cr = 0.5 * (range_begin + range_end) + delta               
-            frb = self.f(range_begin)
-            fre = self.f(range_end)
-            fcl = self.f(cl)
-            fcr = self.f(cr)              
+        for range_begin in ranges_begining:
+            range_end = range_ends[i]
+            while (distance >= tolerance):
+                delta = distance/ 4
+                cl = 0.5 * (range_begin + range_end) - delta
+                cr = 0.5 * (range_begin + range_end) + delta               
+                frb = self.f(range_begin)
+                fre = self.f(range_end)
+                fcl = self.f(cl)
+                fcr = self.f(cr)              
+            
+                if ((frb >= fcl) and (frb >= fre) and (fcl <= fcr)) :
+                    #print ("1")
+                    range_begin = cl
+                elif ((frb >= fcl) and (frb >= fre) and (fcl >= fcr)) :
+                    #print ("2")
+                    range_begin =  cl
+                elif ((frb <= fcl) and (frb <= fre) and (fcl >= fcr)):
+                    #print ("3")
+                    range_begin = cl    
+                elif ((frb >= fcl) and (frb >= fre) and (fcl >= fcr)):
+                    #print ("4")
+                    range_begin = cl
+                elif ((frb >= fcl) and (frb <= fre) and (fcl <= fcr)):
+                    #print ("5")
+                    range_end = cr
+                elif ((frb <= fcl) and (frb <= fre) and (fcl <= fcr)):
+                    #print ("6")
+                    range_end = cr                    
+                elif (fre < fcl) and (fcr> frb):
+                    #print ("7")
+                    self.not_unimodal(range_begin, cl)
+                    self.not_unimodal(cr, range_end)
+                    self.not_unimodal(cl, cr)
+                elif ((frb >= fcl) and (frb < fre) and (fcl <= fcr)):
+                    #print ("8")
+                    range_begin = cl              
+                elif ((frb >= fcl) and (frb < fre) and (fcl > fcr)):
+                    #print ("9")
+                    range_end = cr                    
+                distance = np.abs(range_begin-range_end)
         
-            if ((frb >= fcl) and (frb >= fre) and (fcl <= fcr)) :
-                #print ("1")
-                range_begin = cl
-            elif ((frb >= fcl) and (frb >= fre) and (fcl >= fcr)) :
-                #print ("2")
-                range_begin =  cl
-            elif ((frb <= fcl) and (frb <= fre) and (fcl >= fcr)):
-                #print ("3")
-                range_begin = cl    
-            elif ((frb >= fcl) and (frb >= fre) and (fcl >= fcr)):
-                #print ("4")
-                range_begin = cl
-            elif ((frb >= fcl) and (frb <= fre) and (fcl <= fcr)):
-                #print ("5")
-                range_end = cr
-            elif ((frb <= fcl) and (frb <= fre) and (fcl <= fcr)):
-                #print ("6")
-                range_end = cr                    
-            elif (fre < fcl) and (fcr> frb):
-                #print ("7")
-                self.not_unimodal(range_begin, cl)
-                self.not_unimodal(cr, range_end)
-                self.not_unimodal(cl, cr)
-            elif ((frb >= fcl) and (frb < fre) and (fcl <= fcr)):
-                #print ("8")
-                range_begin = cl              
-            elif ((frb >= fcl) and (frb < fre) and (fcl > fcr)):
-                #print ("9")
-                range_end = cr                    
-            distance = np.abs(range_begin-range_end)
+            results_array_len += 1
+            results.insert(results_array_len, range_begin)
+            results_array_len += 1
+            results.insert(results_array_len, range_end)
+            
+            self.minimum = (abs(range_begin) + abs(range_end))/2
     
-        results_array_len += 1
-        results.insert(results_array_len, range_begin)
-        results_array_len += 1
-        results.insert(results_array_len, range_end)
-        
-        self.minimum = (abs(range_begin) + abs(range_end))/2
-
-        return  range_begin, range_end    
+            return  range_begin, range_end    
     
     def not_unimodal(self, rb, re):
         tolerance = 0.00001
@@ -217,7 +238,7 @@ class dichotomy:
         results_array_len += 1
         results.insert(results_array_len, range_end)        
 
-    def f(self, x):
+    def f(self, x, y = False):
         function_str = str(self.function)
         function_str = function_str.replace( "x", str(x) )
         function_str = function_str.replace( " ", "" )
@@ -240,13 +261,13 @@ print("Pass the parameter or parameters")
 parameters = input()
 '''
 function_str = "2*x**3"
-point = "19"
+points = "19, 20" 
 e = "10"
 parameters = '20'
 
 
 fun = convert_function(function_str)
 parameters = convert_values(parameters)
-FR = Fletcher_Reeves(float(point), float(e), (fun), parameters)
+FR = Fletcher_Reeves(points, float(e), (fun), parameters)
 
 
