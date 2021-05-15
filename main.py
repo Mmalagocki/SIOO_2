@@ -75,11 +75,16 @@ class Fletcher_Reeves:
         self.eta = []
         self.points = values
         self.epsylon = e
-        self.k = 1    
+        self.k = 1
         self.fun = fun
         self.d_fun = []
+        self.grads = [None] * how_many_uknowns
         self.values = values
-        self.ds = []
+        #print("init values ", self.values)
+        local_range = range(0 ,how_many_uknowns)
+        for ik in local_range:
+            self.values.append(None)
+        self.ds = [None]*how_many_uknowns
         self.calculate()
         
     def calculate(self):
@@ -88,38 +93,43 @@ class Fletcher_Reeves:
 
         for ik in local_range:
             grad = gradient(self.fun, self.values[ik], chr(ord(letter) + ik))
-            d = gradient.get_direction(grad)
-            self.ds.append(d)
+            self.grads[ik] = gradient.get_derivative_fun(grad)
+            d = -gradient.get_direction(grad)
+            self.ds[ik] = d
             self.d_fun.append(gradient.get_derivative_fun(grad))
 
         range_begin = 0
         range_end = 0
-        norm = 0
-        while ( norm < self.epsylon):
+        norm = 10
+        while ( norm > self.epsylon):
             for i in local_range:
-                range_begin =  self.points[i] + 50
-                range_end =  self.points[i] - 50
+                range_begin =  self.points[i]
+                range_end =  self.points[i]
             str_fun = self.create_new_fun(self.fun, letter)
             dich = dichotomy(str_fun, range_begin, range_end)
+
             results = dichotomy.get_results(dich)
             results = np.average(results, axis = 0)
             point_value = self.calculate_value_in_point(results)
+
             norm = math.sqrt(pow(self.ds[0], 2) + pow(self.ds[1], 2))
             self.calculate_next_argument(results)
             self.count_eta()
-            self.count_next_d()
-            print("self.ds",self.ds)
-            print("self.d_fun",self.d_fun)
-            print("self.points",self.points)
+
+            self.count_next_d(point_value)
 
         return 1
 
-    def count_next_d(self):
+    def count_next_d(self, point_value):
         local_range = range(0 ,how_many_uknowns)
         letter = 'a'
         for i in local_range:
-            grad = gradient(self.d_fun[i], self.values[i], chr(ord(letter) + i))
-            grad_value = gradient.get_direction(grad)
+            letter_value = self.values[i]
+            letter_value = str(letter_value)
+            derivative = str(self.grads[i])
+            derivative = derivative.replace( " ", "" )
+            derivative = derivative.replace(chr(ord(letter) + i), letter_value)
+            grad_value = eval(derivative)
             dk1 = -grad_value + self.eta[i]*self.ds[i]
             self.ds[i] = dk1
 
@@ -138,9 +148,9 @@ class Fletcher_Reeves:
         local_range = range(0 ,how_many_uknowns)
         for ik in local_range:
             prev_val = self.values[ik]
-            self.values.insert(ik + how_many_uknowns, prev_val)
+            self.values[ik + how_many_uknowns] = prev_val
             next_arg = self.values[ik] + results*self.ds[ik]
-            self.values[ik] = next_arg
+            self.values[ik] = round(next_arg, 2)
 
     def calculate_value_in_point(self, results):
         function_str = str(self.fun)
@@ -174,8 +184,8 @@ class dichotomy:
         self.result = self.calculate()
 
     def calculate(self):
-        results = [0,0]
-        results_array_len = len(results)
+        results = [None]*how_many_uknowns
+        results_array_len = 0
         tolerance = 0.00001
         range_begin = self.rb
         range_end = self.re
@@ -213,10 +223,8 @@ class dichotomy:
             distance = np.abs(range_begin-range_end)
         
         results_array_len += 1
-        results.insert(0,0)
         results[results_array_len-1] = range_begin
         results_array_len += 1
-        results.insert(1,0)
         results[results_array_len-1] = range_end
         
         self.minimum = (abs(range_begin) + abs(range_end))/2
@@ -260,9 +268,9 @@ class dichotomy:
     
         distance = np.abs(range_begin-range_end)
         results_array_len += 1
-        results.insert(results_array_len, range_begin)
+        results.insert(results_array_len, round(range_begin, 10))
         results_array_len += 1
-        results.insert(results_array_len, range_end)        
+        results.insert(results_array_len, round(range_end, 10))
 
     def f(self, x):
         function_str = str(self.function)
@@ -287,9 +295,9 @@ e = input()
 print("Pass the parameter or parameters")
 parameters = input()
 '''
-function_str = "2*a**3 + 3*b"
+function_str = "2*a**2 + 3*b**2"
 points = "19, 20" 
-e = "10"
+e = "1"
 parameters = '20,30'
 how_many_uknowns = 2
 
