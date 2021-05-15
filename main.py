@@ -38,6 +38,7 @@ class gradient:
         self.value = value
         self.letter = letter
         self.derivative = 0
+        self.d_fun = 0
         self.direction = self.calculate_gradient()
 
     def calculate_derivative(self):
@@ -47,10 +48,11 @@ class gradient:
             #print(xprime)
             #self.derivatives.append(xprime)
             self.derivative = xprime
+            self.d_fun = xprime
             return 0
     
         else: 
-            print('Your function must contain atleast one x parameter')
+            #print('Your function must contain atleast one x parameter')
             return 0
 
     def calculate_gradient(self):
@@ -68,16 +70,24 @@ class gradient:
     def get_direction(self):
         #print(self.direction)
         return self.direction
+    
+    def get_derivative_fun(self):
+        #print(self.d_fun)
+        return self.d_fun
 
 ########################## FLETCHER-REEVES #########################  
 class Fletcher_Reeves:
     def __init__(self, points, e, fun, values, n_order):
         points = convert_values(points)
+        return_results = []
+        self.eta = []
         #print(points)
         self.points = points
         self.epsylon = e
         self.k = 1    
         self.fun = fun
+        self.d_fun = []
+        #print("Init fun ", type(self.fun))
         self.values = values
         self.ds = []
         self.calculate()
@@ -85,12 +95,15 @@ class Fletcher_Reeves:
     def calculate(self):
         letter = 'a'
         local_range = range(0 ,how_many_uknowns)
-        for i in local_range:
-            grad = gradient(self.fun, self.values[i], chr(ord(letter) + i))
+
+        for ik in local_range:
+            grad = gradient(self.fun, self.values[ik], chr(ord(letter) + ik))
             d = gradient.get_direction(grad)
             self.ds.append(d)
+            self.d_fun.append(gradient.get_derivative_fun(grad))
 
         #print(self.ds)
+
         range_begin = 0
         range_end = 0
 
@@ -99,56 +112,90 @@ class Fletcher_Reeves:
             range_end = point - 50
         #print(range_begin[0], "   ", range_end[0])
         #print('passed fun' , self.fun)
-        self.create_new_fun(letter)
-        dich = dichotomy(self.fun, range_begin, range_end)
+        str_fun = self.create_new_fun(self.fun, letter)
+        dich = dichotomy(str_fun, range_begin, range_end)
         results = dichotomy.get_results(dich)
-        print(results)
-        '''
-        point_value = self.calculate_value_in_point()
-        min_alpha = dich.get_minimum()
+        results = np.average(results, axis = 0)
+        #print("MINIMALNE ALFA", results) #MINIMALNE ALFA
+        #print("znalezione d1 i d2",self.ds) #znalezione d1 i d2
+        #print("x1 i x2", self.values) # x1 i x2
+        
+        point_value = self.calculate_value_in_point(results)
+        #print("policzona wartosc dla xk+ alfa*dk", point_value) #policzona wartosc dla xk+ alfa*dk
         norm = math.sqrt(pow(self.ds[0], 2) + pow(self.ds[1], 2))
+        #print("norma gradientu", norm)
+        
         if (norm< self.epsylon):
             self.return_results()
-        dk = -self.ds[0]
+        self.calculate_next_argument(results)
 
-        grad2 = gradient(self.fun, self.values)
-        #self.point = point_value + min_alpha*dk
-        eta = (self.ds[0])
-        dk_1
-        '''
-        '''
-        print(point_value)
-        print(dk)
-        print(min_alpha)
-        '''
-        
+        #print("self.d_fun ", type(self.d_fun[0]))
+        self.count_eta()
+        #print("ds przed", self.ds[1])
+        self.count_next_d()
+        #print("ds, po oblieczeniach ", self.ds)
+
         return 1
-        
-    def calculate_value_in_point(self):
+
+    def count_next_d(self):
+        local_range = range(0 ,how_many_uknowns)
+        letter = 'a'
+        for i in local_range:        
+            grad = gradient(self.d_fun[i], self.values[i], chr(ord(letter) + i))
+            grad_value = gradient.get_direction(grad)
+            dk1 = -grad_value + self.eta[i]*self.ds[i]
+            self.ds[i] = dk1
+
+    def count_eta(self):
+        local_range = range(0 ,how_many_uknowns)
+        letter = 'a'
+        for i in local_range:
+            '''
+            print("self.d_fun[i] ", self.d_fun[i])
+            print("self.values[i] ", self.values[i])
+            '''
+            grad1 = gradient(self.fun, self.values[i], chr(ord(letter) + i))
+            xk_value = gradient.get_direction(grad1)
+            grad2 = gradient(self.d_fun[i], self.values[i], chr(ord(letter) + i))
+            xk_plus_1_value = gradient.get_direction(grad2)
+            #print(" xk_plus_1_value ", xk_plus_1_value)
+            #print(" xk_value ",xk_value)
+            single_eta = (xk_plus_1_value * xk_plus_1_value) / (xk_value * xk_value)
+            self.eta.insert(i, single_eta)
+        print(self.eta)
+
+    def calculate_next_argument(self, results):
+        local_range = range(0 ,how_many_uknowns)
+        for ik in local_range:
+            prev_val = self.values[ik]
+            self.values.insert(ik + how_many_uknowns, prev_val)
+            next_arg = self.values[ik] + results*self.ds[ik]
+            self.values[ik] = next_arg
+        #print("Po zmianie", self.values)
+
+    def calculate_value_in_point(self, results):
         function_str = str(self.fun)
-        function_str = function_str.replace( "x", str(self.point) )
+        #print("calculate_value_in_point ", self.fun)
+        function_str = function_str.replace( "alpha", str(results) )
         function_str = function_str.replace( " ", "" )
+        #print(function_str)
         value = compile(function_str, "<string>", "eval")
         return eval(value)
 
-    def create_new_fun(self, letter):
-        function_str = str(self.fun)
+    def create_new_fun(self, fun, letter):
+        function_str = str(fun)
         local_range = range(0 ,how_many_uknowns)
         for i in local_range:
             if (function_str.find(chr(ord(letter) + i), 0) != -1):
                 letter_value = str(self.values[i])
                 d_value = str(self.ds[i])
                 new_value = letter_value + "+" + "alpha" + "*" + d_value
-                self.fun = str(self.fun)
-                self.fun = str(self.fun.replace(chr(ord(letter) + i), new_value))
-                #print(self.fun)
+                fun = str(fun)
+                fun = str(fun.replace(chr(ord(letter) + i), new_value))
             else: 
                 print('Couldn"t create new function')
                 return 0
-        
-    def return_results(self, return_values):
-        #unused
-        return e
+        return fun
 
 ########################## DICHOTOMY #########################
 class dichotomy:
@@ -159,14 +206,14 @@ class dichotomy:
         self.minimum = 0
         self.result = self.calculate()
 
-
-
     def calculate(self):
         results = []
         results_array_len = len(results)
         tolerance = 0.00001
         range_begin = self.rb
         range_end = self.re
+        print(range_begin)
+        print(range_end)
         distance = np.abs(range_begin-range_end) 
         i = 0
         while (distance >= tolerance):
@@ -275,11 +322,8 @@ class dichotomy:
         code = compile(function_str, "<string>", "eval")
         return eval(code)
 
-    def get_minimum(self):
-        return self.minimum
-
     def get_results(self):
-        print(self.result)
+        #print(self.result)
         return self.result
 
 
