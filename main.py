@@ -12,14 +12,12 @@ f = Symbol ('f')
 g = Symbol('h')
 h = Symbol ('h')
 i = Symbol('i')
-#print(type(i))
 j = Symbol ('j')
 results = []
 how_many_uknowns = 0
 ######################### CONVERSION #############################
 def convert_function(fun):
     fun = sympify(fun, evaluate = False)
-
     return fun
 
 def convert_values(values_string):
@@ -28,7 +26,6 @@ def convert_values(values_string):
     separator = values_string.find("," , 0)
     values_array.append(float(values_string[0:separator]))
     values_array.append(float(values_string[separator+1:]))
-    
     return values_array
 
 ########################## DERIVATIVES #########################
@@ -45,20 +42,17 @@ class gradient:
         function_str = str(self.function)
         if (function_str.find(self.letter , 0) != -1):
             xprime = self.function.diff(self.letter)
-            #print(xprime)
             #self.derivatives.append(xprime)
             self.derivative = xprime
             self.d_fun = xprime
             return 0
-    
+
         else: 
-            #print('Your function must contain atleast one x parameter')
             return 0
 
     def calculate_gradient(self):
         result = 0
         self.calculate_derivative()
-        #for derivative in self.derivatives:
         letter_value = self.value
         letter_value = str(letter_value)
         self.derivative = str(self.derivative)
@@ -68,11 +62,9 @@ class gradient:
         return result
     
     def get_direction(self):
-        #print(self.direction)
         return self.direction
     
     def get_derivative_fun(self):
-        #print(self.d_fun)
         return self.d_fun
 
 ########################## FLETCHER-REEVES #########################  
@@ -81,13 +73,11 @@ class Fletcher_Reeves:
         points = convert_values(points)
         return_results = []
         self.eta = []
-        #print(points)
-        self.points = points
+        self.points = values
         self.epsylon = e
         self.k = 1    
         self.fun = fun
         self.d_fun = []
-        #print("Init fun ", type(self.fun))
         self.values = values
         self.ds = []
         self.calculate()
@@ -102,45 +92,32 @@ class Fletcher_Reeves:
             self.ds.append(d)
             self.d_fun.append(gradient.get_derivative_fun(grad))
 
-        #print(self.ds)
-
         range_begin = 0
         range_end = 0
-
-        for point in self.points:
-            range_begin = point + 50
-            range_end = point - 50
-        #print(range_begin[0], "   ", range_end[0])
-        #print('passed fun' , self.fun)
-        str_fun = self.create_new_fun(self.fun, letter)
-        dich = dichotomy(str_fun, range_begin, range_end)
-        results = dichotomy.get_results(dich)
-        results = np.average(results, axis = 0)
-        #print("MINIMALNE ALFA", results) #MINIMALNE ALFA
-        #print("znalezione d1 i d2",self.ds) #znalezione d1 i d2
-        #print("x1 i x2", self.values) # x1 i x2
-        
-        point_value = self.calculate_value_in_point(results)
-        #print("policzona wartosc dla xk+ alfa*dk", point_value) #policzona wartosc dla xk+ alfa*dk
-        norm = math.sqrt(pow(self.ds[0], 2) + pow(self.ds[1], 2))
-        #print("norma gradientu", norm)
-        
-        if (norm< self.epsylon):
-            self.return_results()
-        self.calculate_next_argument(results)
-
-        #print("self.d_fun ", type(self.d_fun[0]))
-        self.count_eta()
-        #print("ds przed", self.ds[1])
-        self.count_next_d()
-        #print("ds, po oblieczeniach ", self.ds)
+        norm = 0
+        while ( norm < self.epsylon):
+            for i in local_range:
+                range_begin =  self.points[i] + 50
+                range_end =  self.points[i] - 50
+            str_fun = self.create_new_fun(self.fun, letter)
+            dich = dichotomy(str_fun, range_begin, range_end)
+            results = dichotomy.get_results(dich)
+            results = np.average(results, axis = 0)
+            point_value = self.calculate_value_in_point(results)
+            norm = math.sqrt(pow(self.ds[0], 2) + pow(self.ds[1], 2))
+            self.calculate_next_argument(results)
+            self.count_eta()
+            self.count_next_d()
+            print("self.ds",self.ds)
+            print("self.d_fun",self.d_fun)
+            print("self.points",self.points)
 
         return 1
 
     def count_next_d(self):
         local_range = range(0 ,how_many_uknowns)
         letter = 'a'
-        for i in local_range:        
+        for i in local_range:
             grad = gradient(self.d_fun[i], self.values[i], chr(ord(letter) + i))
             grad_value = gradient.get_direction(grad)
             dk1 = -grad_value + self.eta[i]*self.ds[i]
@@ -150,19 +127,12 @@ class Fletcher_Reeves:
         local_range = range(0 ,how_many_uknowns)
         letter = 'a'
         for i in local_range:
-            '''
-            print("self.d_fun[i] ", self.d_fun[i])
-            print("self.values[i] ", self.values[i])
-            '''
             grad1 = gradient(self.fun, self.values[i], chr(ord(letter) + i))
             xk_value = gradient.get_direction(grad1)
             grad2 = gradient(self.d_fun[i], self.values[i], chr(ord(letter) + i))
             xk_plus_1_value = gradient.get_direction(grad2)
-            #print(" xk_plus_1_value ", xk_plus_1_value)
-            #print(" xk_value ",xk_value)
             single_eta = (xk_plus_1_value * xk_plus_1_value) / (xk_value * xk_value)
             self.eta.insert(i, single_eta)
-        print(self.eta)
 
     def calculate_next_argument(self, results):
         local_range = range(0 ,how_many_uknowns)
@@ -171,14 +141,11 @@ class Fletcher_Reeves:
             self.values.insert(ik + how_many_uknowns, prev_val)
             next_arg = self.values[ik] + results*self.ds[ik]
             self.values[ik] = next_arg
-        #print("Po zmianie", self.values)
 
     def calculate_value_in_point(self, results):
         function_str = str(self.fun)
-        #print("calculate_value_in_point ", self.fun)
         function_str = function_str.replace( "alpha", str(results) )
         function_str = function_str.replace( " ", "" )
-        #print(function_str)
         value = compile(function_str, "<string>", "eval")
         return eval(value)
 
@@ -207,13 +174,11 @@ class dichotomy:
         self.result = self.calculate()
 
     def calculate(self):
-        results = []
+        results = [0,0]
         results_array_len = len(results)
         tolerance = 0.00001
         range_begin = self.rb
         range_end = self.re
-        print(range_begin)
-        print(range_end)
         distance = np.abs(range_begin-range_end) 
         i = 0
         while (distance >= tolerance):
@@ -226,40 +191,33 @@ class dichotomy:
             fcr = self.f(cr)              
         
             if ((frb >= fcl) and (frb >= fre) and (fcl <= fcr)) :
-                #print ("1")
                 range_begin = cl
             elif ((frb >= fcl) and (frb >= fre) and (fcl >= fcr)) :
-                #print ("2")
                 range_begin =  cl
             elif ((frb <= fcl) and (frb <= fre) and (fcl >= fcr)):
-                #print ("3")
                 range_begin = cl    
             elif ((frb >= fcl) and (frb >= fre) and (fcl >= fcr)):
-                #print ("4")
                 range_begin = cl
             elif ((frb >= fcl) and (frb <= fre) and (fcl <= fcr)):
-                #print ("5")
                 range_end = cr
             elif ((frb <= fcl) and (frb <= fre) and (fcl <= fcr)):
-                #print ("6")
                 range_end = cr                    
             elif (fre < fcl) and (fcr> frb):
-                #print ("7")
                 self.not_unimodal(range_begin, cl)
                 self.not_unimodal(cr, range_end)
                 self.not_unimodal(cl, cr)
             elif ((frb >= fcl) and (frb < fre) and (fcl <= fcr)):
-                #print ("8")
                 range_begin = cl              
             elif ((frb >= fcl) and (frb < fre) and (fcl > fcr)):
-                #print ("9")
                 range_end = cr                    
             distance = np.abs(range_begin-range_end)
         
         results_array_len += 1
-        results.insert(results_array_len, range_begin)
+        results.insert(0,0)
+        results[results_array_len-1] = range_begin
         results_array_len += 1
-        results.insert(results_array_len, range_end)
+        results.insert(1,0)
+        results[results_array_len-1] = range_end
         
         self.minimum = (abs(range_begin) + abs(range_end))/2
         return results
@@ -280,33 +238,24 @@ class dichotomy:
             fcr = self.f(cr)              
     
             if ((frb >= fcl) and (frb >= fre) and (fcl <= fcr)) :
-                #print ("1")
                 range_begin = cl
             elif ((frb >= fcl) and (frb >= fre) and (fcl >= fcr)) :
-                #print ("2")
                 range_begin =  cl
             elif ((frb <= fcl) and (frb <= fre) and (fcl >= fcr)):
-                #print ("3")
-                range_begin = cl    
+                range_begin = cl
             elif ((frb >= fcl) and (frb >= fre) and (fcl >= fcr)):
-                #print ("4")
                 range_begin = cl
             elif ((frb >= fcl) and (frb <= fre) and (fcl <= fcr)):
-                #print ("5")
                 range_end = cr
             elif ((frb <= fcl) and (frb <= fre) and (fcl <= fcr)):
-                #print ("6")
-                range_end = cr                    
+                range_end = cr
             elif (fre < fcl) and (fcr> frb):
-                #print ("7")
                 self.not_unimodal(range_begin, cl)
                 self.not_unimodal(cr, range_end)
                 self.not_unimodal(cl, cr)
             elif ((frb >= fcl) and (frb < fre) and (fcl <= fcr)):
-                #print ("8")
                 range_begin = cl              
             elif ((frb >= fcl) and (frb < fre) and (fcl > fcr)):
-                #print ("9")
                 range_end = cr                    
     
         distance = np.abs(range_begin-range_end)
@@ -346,7 +295,6 @@ how_many_uknowns = 2
 
 
 fun = convert_function(function_str)
-#print(fun.diff(a))
 parameters = convert_values(parameters)
 FR = Fletcher_Reeves(points, float(e), (fun), parameters, how_many_uknowns)
 
