@@ -1,6 +1,14 @@
 from sympy import *
 import numpy as np
 import math
+import scipy.optimize as opt
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,
+NavigationToolbar2Tk)
+from tkinter import *
+import matlab.engine
+from decimal import Decimal
 
 ########################## GLOBALS #############################
 a = Symbol('a')
@@ -13,6 +21,7 @@ g = Symbol('h')
 h = Symbol ('h')
 i = Symbol('i')
 j = Symbol ('j')
+x = Symbol ('x')
 results = []
 how_many_uknowns = 0
 ######################### CONVERSION #############################
@@ -42,7 +51,6 @@ class gradient:
         function_str = str(self.function)
         if (function_str.find(self.letter , 0) != -1):
             xprime = self.function.diff(self.letter)
-            #self.derivatives.append(xprime)
             self.derivative = xprime
             self.d_fun = xprime
             return 0
@@ -58,6 +66,7 @@ class gradient:
         self.derivative = str(self.derivative)
         self.derivative = self.derivative.replace( " ", "" )
         self.derivative = self.derivative.replace(self.letter, letter_value)
+        #print("self.derivative ", self.derivative)
         result = eval(self.derivative)
         return result
     
@@ -72,14 +81,15 @@ class Fletcher_Reeves:
     def __init__(self, points, e, fun, values, n_order):
         points = convert_values(points)
         return_results = []
-        self.eta = []
-        self.points = values
+        self.eta = [None] * how_many_uknowns
+        self.points = points
         self.epsylon = e
         self.k = 1
         self.fun = fun
         self.d_fun = []
         self.grads = [None] * how_many_uknowns
         self.values = values
+
         #print("init values ", self.values)
         local_range = range(0 ,how_many_uknowns)
         for ik in local_range:
@@ -101,35 +111,51 @@ class Fletcher_Reeves:
         range_begin = 0
         range_end = 0
         norm = 10
-        while ( norm > self.epsylon):
-            for i in local_range:
-                range_begin =  self.points[i]
-                range_end =  self.points[i]
-            str_fun = self.create_new_fun(self.fun, letter)
+
+        range_begin = self.points[0] + 50
+        range_end = self.points[1] - 50
+        '''
+        print(" self.points[0] => ",self.points[0])
+        print(" self.points[1] => ",self.points[1])
+        '''
+        #print(" epsylon => ",self.epsylon)
+        #print(" min_alpha => ",min_alpha)
+        combined_string = self.d_fun[0] + self.d_fun[1]
+        x0 = 0.0
+        #print(" combined_string => ",combined_string)
+        while norm > self.epsylon:
+            #print("values", self.values)
+            str_fun = self.create_new_fun(combined_string, letter)
+            str_fminfun = self.create_new_fminmsearch(combined_string, letter)
+            #print(" str_fminfun => ",str_fminfun)
             dich = dichotomy(str_fun, range_begin, range_end)
+            min_alpha = dichotomy.get_results(dich)
+            min_alpha = np.average(min_alpha, axis = 0)
+            min_alpha = 0
 
-            results = dichotomy.get_results(dich)
-            results = np.average(results, axis = 0)
-            point_value = self.calculate_value_in_point(results)
-
+            #xopt = eng.fminsearch(str_fminfun, x0)
+            #print(" xopt => ", xopt)
+            self.calculate_value_in_point(min_alpha)
             norm = math.sqrt(pow(self.ds[0], 2) + pow(self.ds[1], 2))
-            self.calculate_next_argument(results)
+            self.calculate_next_argument(min_alpha)
             self.count_eta()
-
-            self.count_next_d(point_value)
+            self.count_next_d()
+            #print(" norm => ",norm)
 
         return 1
 
-    def count_next_d(self, point_value):
+    def count_next_d(self):
         local_range = range(0 ,how_many_uknowns)
         letter = 'a'
         for i in local_range:
             letter_value = self.values[i]
+            print(" values.calculate_next_argument[i] => ",self.values[i])
             letter_value = str(letter_value)
             derivative = str(self.grads[i])
             derivative = derivative.replace( " ", "" )
             derivative = derivative.replace(chr(ord(letter) + i), letter_value)
             grad_value = eval(derivative)
+            #print(" eta => ",self.eta)
             dk1 = -grad_value + self.eta[i]*self.ds[i]
             self.ds[i] = dk1
 
@@ -137,38 +163,77 @@ class Fletcher_Reeves:
         local_range = range(0 ,how_many_uknowns)
         letter = 'a'
         for i in local_range:
+            #print("count_eta", self.values[i])
             grad1 = gradient(self.fun, self.values[i], chr(ord(letter) + i))
             xk_value = gradient.get_direction(grad1)
-            grad2 = gradient(self.d_fun[i], self.values[i], chr(ord(letter) + i))
+            grad2 = gradient(self.fun, self.values[i+how_many_uknowns], chr(ord(letter) + i))
             xk_plus_1_value = gradient.get_direction(grad2)
+            #print(" xk_value => ",xk_value)
+            #print(" xk_plus_1_value => ",xk_plus_1_value)
+            #print(" self.values[i] => ",self.values[i])
             single_eta = (xk_plus_1_value * xk_plus_1_value) / (xk_value * xk_value)
-            self.eta.insert(i, single_eta)
+            self.eta[i] = single_eta
 
-    def calculate_next_argument(self, results):
+    def calculate_next_argument(self, min_alpha):
         local_range = range(0 ,how_many_uknowns)
-        for ik in local_range:
-            prev_val = self.values[ik]
-            self.values[ik + how_many_uknowns] = prev_val
-            next_arg = self.values[ik] + results*self.ds[ik]
-            self.values[ik] = round(next_arg, 2)
+        #print("calculate_next_argument", self.values)
+        for i in local_range:
+            prev_val = self.values[i]
+            #print(" values.calculate_next_argument[i] => ",self.values[i])
+            self.values[i + how_many_uknowns] = prev_val
+           #print(" self.values[i] => ",self.values[i])
+            next_arg = self.values[i] + min_alpha*self.ds[i]
+            self.values[i] = round(next_arg, 2)
+    
+    def calculate_value_in_point(self, min_alpha):
+        local_range = range(0 ,how_many_uknowns)
+        letter = 'a'
+        for i in local_range:
 
-    def calculate_value_in_point(self, results):
-        function_str = str(self.fun)
-        function_str = function_str.replace( "alpha", str(results) )
-        function_str = function_str.replace( " ", "" )
-        value = compile(function_str, "<string>", "eval")
-        return eval(value)
+            function_str = str(self.d_fun[i])
+            '''
+            print(" min_alpha => ",min_alpha)
+            print(" self.values[i] => ",self.values[i])
+            print(" self.ds[i] => ",self.ds[i])
+            '''
+            #print(" calculate_value_in_point.values[i] => ",self.values[i])
+            new_value = self.values[i] + min_alpha*self.ds[i]
+            #print(" new_value => ",new_value)
+            function_str = function_str.replace( chr(ord(letter) + i), str(new_value) )
+            function_str = function_str.replace( " ", "" )
+            #print(" function_str => ",function_str)
+            #print(" function_str => ",function_str)
+            value = compile(function_str, "<string>", "eval")
+            value = eval(value)
+            self.values[i] = value
 
     def create_new_fun(self, fun, letter):
         function_str = str(fun)
         local_range = range(0 ,how_many_uknowns)
         for i in local_range:
             if (function_str.find(chr(ord(letter) + i), 0) != -1):
+                #print(" create_new_fun.values[i] => ",self.values[i])
                 letter_value = str(self.values[i])
                 d_value = str(self.ds[i])
-                new_value = letter_value + "+" + "alpha" + "*" + d_value
+                new_value = letter_value + "+" + "x" + "*" + d_value
                 fun = str(fun)
                 fun = str(fun.replace(chr(ord(letter) + i), new_value))
+            else: 
+                print('Couldn"t create new function')
+                return 0
+        return fun
+
+    def create_new_fminmsearch(self, fun, letter):
+        function_str = str(fun)
+        local_range = range(0 ,how_many_uknowns)
+        for i in local_range:
+            if (function_str.find(chr(ord(letter) + i), 0) != -1):
+                letter_value = str(self.values[i])
+                d_value = str(self.ds[i])
+                new_value = letter_value + "+" + "x" + "*" + d_value
+                fun = str(fun)
+                fun = str(fun.replace(chr(ord(letter) + i), new_value))
+                fun = str(fun.replace("**", "^"))
             else: 
                 print('Couldn"t create new function')
                 return 0
@@ -178,8 +243,8 @@ class Fletcher_Reeves:
 class dichotomy:
     def __init__(self, fun, rb, re):
         self.function = fun
-        self.rb = rb
-        self.re = re
+        self.rb = float(rb)
+        self.re = float(re)
         self.minimum = 0
         self.result = self.calculate()
 
@@ -194,7 +259,7 @@ class dichotomy:
         while (distance >= tolerance):
             delta = distance/ 4
             cl = 0.5 * (range_begin + range_end) - delta
-            cr = 0.5 * (range_begin + range_end) + delta               
+            cr = 0.5 * (range_begin + range_end) + delta
             frb = self.f(range_begin)
             fre = self.f(range_end)
             fcl = self.f(cl)
@@ -274,7 +339,7 @@ class dichotomy:
 
     def f(self, x):
         function_str = str(self.function)
-        function_str = function_str.replace( "alpha", str(x) )
+        function_str = function_str.replace( "x", str(x) )
         function_str = function_str.replace( " ", "" )
         code = compile(function_str, "<string>", "eval")
         return eval(code)
@@ -296,14 +361,12 @@ print("Pass the parameter or parameters")
 parameters = input()
 '''
 function_str = "2*a**2 + 3*b**2"
-points = "19, 20" 
+points = "1, 2" 
 e = "1"
-parameters = '20,30'
+parameters = '1,3'
 how_many_uknowns = 2
-
+eng = matlab.engine.start_matlab ()
 
 fun = convert_function(function_str)
 parameters = convert_values(parameters)
-FR = Fletcher_Reeves(points, float(e), (fun), parameters, how_many_uknowns)
-
-
+FR = Fletcher_Reeves(points, float(e), fun, parameters, how_many_uknowns)
