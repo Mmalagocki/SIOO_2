@@ -1,5 +1,6 @@
 from sympy import *
 import numpy as np
+from numpy import linalg as LA
 import math
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
@@ -9,6 +10,7 @@ NavigationToolbar2Tk)
 from tkinter import *
 import matlab.engine
 from decimal import Decimal
+import numdifftools as nd
 
 ########################## GLOBALS #############################
 a = Symbol('a')
@@ -21,7 +23,6 @@ g = Symbol('h')
 h = Symbol ('h')
 i = Symbol('i')
 j = Symbol ('j')
-x = Symbol ('x')
 results = []
 how_many_uknowns = 0
 ######################### CONVERSION #############################
@@ -100,11 +101,15 @@ class Fletcher_Reeves:
     def calculate(self):
         letter = 'a'
         local_range = range(0 ,how_many_uknowns)
-
+        fun =  lambda x:2*x[0]**2 + 3*x[1]**2
+        #(1-x[0])**2 +(x[1]-x[0]**2)**2
+        grad2 = nd.Gradient(fun)([self.values[0], self.values[1]])
+        print("grad2 => ",grad2)
         for ik in local_range:
             grad = gradient(self.fun, self.values[ik], chr(ord(letter) + ik))
             self.grads[ik] = gradient.get_derivative_fun(grad)
             d = -gradient.get_direction(grad)
+            #print( " ujemny gradient", d)
             self.ds[ik] = d
             self.d_fun.append(gradient.get_derivative_fun(grad))
 
@@ -131,12 +136,16 @@ class Fletcher_Reeves:
             dich = dichotomy(str_fun, range_begin, range_end)
             min_alpha = dichotomy.get_results(dich)
             min_alpha = np.average(min_alpha, axis = 0)
-            min_alpha = 0
-
+            #min_alpha = 0
+            #print(" min_alpha => ",min_alpha)
             #xopt = eng.fminsearch(str_fminfun, x0)
             #print(" xopt => ", xopt)
             self.calculate_value_in_point(min_alpha)
+            #print("LA.norm => ",LA.norm([self.ds[0], self.ds[1]]))
+            
+            #linalg.norm
             norm = math.sqrt(pow(self.ds[0], 2) + pow(self.ds[1], 2))
+            #print("norm => ", norm) 
             self.calculate_next_argument(min_alpha)
             self.count_eta()
             self.count_next_d()
@@ -149,14 +158,21 @@ class Fletcher_Reeves:
         letter = 'a'
         for i in local_range:
             letter_value = self.values[i]
-            print(" values.calculate_next_argument[i] => ",self.values[i])
+            #print(" values.calculate_next_argument[i] => ",self.values[i])
             letter_value = str(letter_value)
             derivative = str(self.grads[i])
             derivative = derivative.replace( " ", "" )
             derivative = derivative.replace(chr(ord(letter) + i), letter_value)
             grad_value = eval(derivative)
             #print(" eta => ",self.eta)
+            '''
+            print(" [i] => ",i)            
+            print(" self.ds[i] => ",self.ds[i])
+            print(" self.eta[i] => ",self.eta[i])
+            print(" grad_value => ",grad_value)
+            '''
             dk1 = -grad_value + self.eta[i]*self.ds[i]
+            #print(" dk1 => ",dk1)
             self.ds[i] = dk1
 
     def count_eta(self):
@@ -164,24 +180,27 @@ class Fletcher_Reeves:
         letter = 'a'
         for i in local_range:
             #print("count_eta", self.values[i])
-            grad1 = gradient(self.fun, self.values[i], chr(ord(letter) + i))
-            xk_value = gradient.get_direction(grad1)
-            grad2 = gradient(self.fun, self.values[i+how_many_uknowns], chr(ord(letter) + i))
-            xk_plus_1_value = gradient.get_direction(grad2)
-            #print(" xk_value => ",xk_value)
-            #print(" xk_plus_1_value => ",xk_plus_1_value)
-            #print(" self.values[i] => ",self.values[i])
-            single_eta = (xk_plus_1_value * xk_plus_1_value) / (xk_value * xk_value)
+            fun =  lambda x:2*x[0]**2 + 3*x[1]**2
+            xk_value = nd.Gradient(fun)([self.values[0], self.values[1]])
+            xk_plus_1_value = nd.Gradient(fun)([self.values[2], self.values[3]])
+            #single_eta = (xk_plus_1_value * xk_plus_1_value) / (xk_value * xk_value)
+            xk_value = np.array(xk_value)
+            xk_plus_1_value = np.array(xk_plus_1_value)
+            print("xk_value => ", xk_value)
+            print("xk_plus_1_value => ", xk_plus_1_value)
+            print(" xk_product => ", np.dot(xk_value, xk_value))
+            xk_product_plus_1 = np.dot(xk_plus_1_value, xk_plus_1_value)
+            print(" xk_product_plus_1 => ", xk_product_plus_1)
+            single_eta = np.divide(xk_product_plus_1, np.dot(xk_value, xk_value))
+            print("  single_eta => ",single_eta)
+            #print(" single_eta ",single_eta)
             self.eta[i] = single_eta
 
     def calculate_next_argument(self, min_alpha):
         local_range = range(0 ,how_many_uknowns)
-        #print("calculate_next_argument", self.values)
         for i in local_range:
             prev_val = self.values[i]
-            #print(" values.calculate_next_argument[i] => ",self.values[i])
             self.values[i + how_many_uknowns] = prev_val
-           #print(" self.values[i] => ",self.values[i])
             next_arg = self.values[i] + min_alpha*self.ds[i]
             self.values[i] = round(next_arg, 2)
     
@@ -189,20 +208,10 @@ class Fletcher_Reeves:
         local_range = range(0 ,how_many_uknowns)
         letter = 'a'
         for i in local_range:
-
             function_str = str(self.d_fun[i])
-            '''
-            print(" min_alpha => ",min_alpha)
-            print(" self.values[i] => ",self.values[i])
-            print(" self.ds[i] => ",self.ds[i])
-            '''
-            #print(" calculate_value_in_point.values[i] => ",self.values[i])
             new_value = self.values[i] + min_alpha*self.ds[i]
-            #print(" new_value => ",new_value)
             function_str = function_str.replace( chr(ord(letter) + i), str(new_value) )
             function_str = function_str.replace( " ", "" )
-            #print(" function_str => ",function_str)
-            #print(" function_str => ",function_str)
             value = compile(function_str, "<string>", "eval")
             value = eval(value)
             self.values[i] = value
@@ -249,19 +258,33 @@ class dichotomy:
         self.result = self.calculate()
 
     def calculate(self):
-        results = [None]*how_many_uknowns
+        solutions = [None]*how_many_uknowns
         results_array_len = 0
         tolerance = 0.00001
         range_begin = self.rb
         range_end = self.re
+        
+            
         distance = np.abs(range_begin-range_end) 
         i = 0
         while (distance >= tolerance):
             delta = distance/ 4
+            frb = self.f(range_begin)
+            fre = self.f(range_end)    
+            #print("frb =>",frb)
+            #print("fre =>",fre)
+            if range_end < 0 :
+                range_end = 0
+            if range_begin < 0 :
+                range_begin = 0
+            if ((range_begin < 0)  and (range_end < 0)) :
+                range_begin = range_begin + 50
+                range_end = range_end - 50
+                continue     
+           # print("frb after change =>",frb)
+           # print("fre  after change=>",fre)            
             cl = 0.5 * (range_begin + range_end) - delta
             cr = 0.5 * (range_begin + range_end) + delta
-            frb = self.f(range_begin)
-            fre = self.f(range_end)
             fcl = self.f(cl)
             fcr = self.f(cr)              
         
@@ -286,56 +309,14 @@ class dichotomy:
             elif ((frb >= fcl) and (frb < fre) and (fcl > fcr)):
                 range_end = cr                    
             distance = np.abs(range_begin-range_end)
-        
-        results_array_len += 1
-        results[results_array_len-1] = range_begin
-        results_array_len += 1
-        results[results_array_len-1] = range_end
+        #print("range_begin assignment =>",range_begin)
+        #print("range_end  assignment=>",range_end)           
+        solutions[0] = range_begin
+        solutions[1] = range_end
         
         self.minimum = (abs(range_begin) + abs(range_end))/2
-        return results
-
-    def not_unimodal(self, rb, re):
-        tolerance = 0.00001
-        range_begin = rb
-        range_end = re
-        distance = np.abs(range_begin-range_end) 
-    
-        while (distance >= tolerance):
-            delta = distance/ 4
-            cl = 0.5 * (range_begin + range_end) - delta
-            cr = 0.5 * (range_begin + range_end) + delta               
-            frb = self.f(range_begin)
-            fre = self.f(range_end)
-            fcl = self.f(cl)
-            fcr = self.f(cr)              
-    
-            if ((frb >= fcl) and (frb >= fre) and (fcl <= fcr)) :
-                range_begin = cl
-            elif ((frb >= fcl) and (frb >= fre) and (fcl >= fcr)) :
-                range_begin =  cl
-            elif ((frb <= fcl) and (frb <= fre) and (fcl >= fcr)):
-                range_begin = cl
-            elif ((frb >= fcl) and (frb >= fre) and (fcl >= fcr)):
-                range_begin = cl
-            elif ((frb >= fcl) and (frb <= fre) and (fcl <= fcr)):
-                range_end = cr
-            elif ((frb <= fcl) and (frb <= fre) and (fcl <= fcr)):
-                range_end = cr
-            elif (fre < fcl) and (fcr> frb):
-                self.not_unimodal(range_begin, cl)
-                self.not_unimodal(cr, range_end)
-                self.not_unimodal(cl, cr)
-            elif ((frb >= fcl) and (frb < fre) and (fcl <= fcr)):
-                range_begin = cl              
-            elif ((frb >= fcl) and (frb < fre) and (fcl > fcr)):
-                range_end = cr                    
-    
-        distance = np.abs(range_begin-range_end)
-        results_array_len += 1
-        results.insert(results_array_len, round(range_begin, 10))
-        results_array_len += 1
-        results.insert(results_array_len, round(range_end, 10))
+        #print("results =>",solutions)
+        return solutions
 
     def f(self, x):
         function_str = str(self.function)
@@ -366,6 +347,7 @@ e = "1"
 parameters = '1,3'
 how_many_uknowns = 2
 eng = matlab.engine.start_matlab ()
+eng.optimset('Display', 'off');
 
 fun = convert_function(function_str)
 parameters = convert_values(parameters)
