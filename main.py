@@ -13,6 +13,7 @@ from decimal import Decimal
 import numdifftools as nd
 
 ########################## GLOBALS #############################
+'''
 a = Symbol('a')
 b = Symbol ('b')
 c = Symbol('c')
@@ -23,11 +24,16 @@ g = Symbol('h')
 h = Symbol ('h')
 i = Symbol('i')
 j = Symbol ('j')
+'''
 results = []
 how_many_uknowns = 0
 ######################### CONVERSION #############################
 def convert_function(fun):
-    fun = sympify(fun, evaluate = False)
+    letter = 'a'
+    local_range = range(0 ,how_many_uknowns)
+    for ik in local_range:
+        fun = fun.replace( chr(ord(letter) + ik), "x[" + str(ik) + "]" )
+    fun =  lambda x:fun
     return fun
 
 def convert_values(values_string):
@@ -80,6 +86,7 @@ class gradient:
 ########################## FLETCHER-REEVES #########################  
 class Fletcher_Reeves:
     def __init__(self, points, e, fun, values, n_order):
+        print("sucess")
         points = convert_values(points)
         return_results = []
         self.eta = [None] * how_many_uknowns
@@ -102,14 +109,11 @@ class Fletcher_Reeves:
         letter = 'a'
         local_range = range(0 ,how_many_uknowns)
         fun =  lambda x:2*x[0]**2 + 3*x[1]**2
-        #(1-x[0])**2 +(x[1]-x[0]**2)**2
         grad2 = nd.Gradient(fun)([self.values[0], self.values[1]])
-        print("grad2 => ",grad2)
         for ik in local_range:
-            grad = gradient(self.fun, self.values[ik], chr(ord(letter) + ik))
+            grad = gradient(self.fun, self.values[ik],"x[" + str(ik) + "]" )
             self.grads[ik] = gradient.get_derivative_fun(grad)
             d = -gradient.get_direction(grad)
-            #print( " ujemny gradient", d)
             self.ds[ik] = d
             self.d_fun.append(gradient.get_derivative_fun(grad))
 
@@ -119,37 +123,20 @@ class Fletcher_Reeves:
 
         range_begin = self.points[0] + 50
         range_end = self.points[1] - 50
-        '''
-        print(" self.points[0] => ",self.points[0])
-        print(" self.points[1] => ",self.points[1])
-        '''
-        #print(" epsylon => ",self.epsylon)
-        #print(" min_alpha => ",min_alpha)
         combined_string = self.d_fun[0] + self.d_fun[1]
         x0 = 0.0
-        #print(" combined_string => ",combined_string)
         while norm > self.epsylon:
-            #print("values", self.values)
             str_fun = self.create_new_fun(combined_string, letter)
             str_fminfun = self.create_new_fminmsearch(combined_string, letter)
-            #print(" str_fminfun => ",str_fminfun)
             dich = dichotomy(str_fun, range_begin, range_end)
             min_alpha = dichotomy.get_results(dich)
             min_alpha = np.average(min_alpha, axis = 0)
-            #min_alpha = 0
-            #print(" min_alpha => ",min_alpha)
-            #xopt = eng.fminsearch(str_fminfun, x0)
-            #print(" xopt => ", xopt)
+            min_alpha = 0.00001
             self.calculate_value_in_point(min_alpha)
-            #print("LA.norm => ",LA.norm([self.ds[0], self.ds[1]]))
-            
-            #linalg.norm
-            norm = math.sqrt(pow(self.ds[0], 2) + pow(self.ds[1], 2))
-            #print("norm => ", norm) 
+            norm = math.sqrt(pow(self.ds[0], 2) + pow(self.ds[1], 2)) 
             self.calculate_next_argument(min_alpha)
             self.count_eta()
             self.count_next_d()
-            #print(" norm => ",norm)
 
         return 1
 
@@ -158,42 +145,25 @@ class Fletcher_Reeves:
         letter = 'a'
         for i in local_range:
             letter_value = self.values[i]
-            #print(" values.calculate_next_argument[i] => ",self.values[i])
             letter_value = str(letter_value)
             derivative = str(self.grads[i])
             derivative = derivative.replace( " ", "" )
             derivative = derivative.replace(chr(ord(letter) + i), letter_value)
             grad_value = eval(derivative)
-            #print(" eta => ",self.eta)
-            '''
-            print(" [i] => ",i)            
-            print(" self.ds[i] => ",self.ds[i])
-            print(" self.eta[i] => ",self.eta[i])
-            print(" grad_value => ",grad_value)
-            '''
             dk1 = -grad_value + self.eta[i]*self.ds[i]
-            #print(" dk1 => ",dk1)
             self.ds[i] = dk1
 
     def count_eta(self):
         local_range = range(0 ,how_many_uknowns)
         letter = 'a'
         for i in local_range:
-            #print("count_eta", self.values[i])
-            fun =  lambda x:2*x[0]**2 + 3*x[1]**2
-            xk_value = nd.Gradient(fun)([self.values[0], self.values[1]])
-            xk_plus_1_value = nd.Gradient(fun)([self.values[2], self.values[3]])
-            #single_eta = (xk_plus_1_value * xk_plus_1_value) / (xk_value * xk_value)
+            #fun =  lambda x:2*x[0]**2 + 3*x[1]**2
+            xk_value = nd.Gradient(self.fun)([self.values[0], self.values[1]])
+            xk_plus_1_value = nd.Gradient(self.fun)([self.values[2], self.values[3]])
             xk_value = np.array(xk_value)
             xk_plus_1_value = np.array(xk_plus_1_value)
-            print("xk_value => ", xk_value)
-            print("xk_plus_1_value => ", xk_plus_1_value)
-            print(" xk_product => ", np.dot(xk_value, xk_value))
             xk_product_plus_1 = np.dot(xk_plus_1_value, xk_plus_1_value)
-            print(" xk_product_plus_1 => ", xk_product_plus_1)
             single_eta = np.divide(xk_product_plus_1, np.dot(xk_value, xk_value))
-            print("  single_eta => ",single_eta)
-            #print(" single_eta ",single_eta)
             self.eta[i] = single_eta
 
     def calculate_next_argument(self, min_alpha):
