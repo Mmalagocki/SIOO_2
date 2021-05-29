@@ -18,6 +18,141 @@ a = Symbol('a')
 b = Symbol ('b')
 results = []
 how_many_uknowns = 0
+eng = matlab.engine.start_matlab ()
+eng.optimset('Display', 'off');
+
+########################## GUI #############################
+def iterations_chosen():
+    Label(frame, text="You have chosen accuracy").grid(row = 0)
+    
+    Label(frame, text="Function:").grid(row = 1)
+    function_input = Entry(frame, width = 20, cursor = 'hand2')
+    function_input.insert(0,'')
+    function_input.grid(row=1 , column=1, pady = 10)
+    
+    Label(frame, text="Iterations:").grid(row = 2)
+    iterations_input = Entry(frame, width = 20, cursor = 'hand2')
+    iterations_input.insert(0,'')
+    iterations_input.grid(row = 2 , column=1, pady = 10)
+    
+    Label(frame, text="Pass the values (2,2):").grid(row = 3)
+    values_input = Entry(frame, width = 20, cursor = 'hand2')
+    values_input.insert(0,'')
+    values_input.grid(row = 3 , column = 1, pady = 10)
+    
+    Label(frame, text="How many unkowns:").grid(row = 4)
+    how_many_uknowns_input = Entry(frame, width = 20, cursor = 'hand2')
+    how_many_uknowns_input.insert(0,'')
+    how_many_uknowns_input.grid(row = 4 , column = 1, pady = 10)    
+     
+    Label(frame, text="Pass the points:").grid(row = 5)
+    points_input = Entry(frame, width = 20, cursor = 'hand2')
+    points_input.insert(0,'')
+    points_input.grid(row = 5 , column = 1, pady = 10)    
+         
+    
+    Button_submit = Button(frame, text = "Submit", command = lambda: set_iterations_values(function_input.get(), 
+                                                                               iterations_input.get(), 
+                                                                               values_input.get(),
+                                                                               how_many_uknowns_input.get(),
+                                                                               points_input.get()
+                                                                               ))
+    Button_submit.grid(row=6 , column=1)
+
+def accuracy_chosen():
+    Label(frame, text="You have chosen accuracy").grid(row = 0)
+    
+    Label(frame, text="Function:").grid(row = 1)
+    function_input = Entry(frame, width = 20, cursor = 'hand2')
+    function_input.insert(0,'')
+    function_input.grid(row=1 , column=1, pady = 10)
+    
+    Label(frame, text="Accuracy:").grid(row = 2)
+    accuracy_input = Entry(frame, width = 20, cursor = 'hand2')
+    accuracy_input.insert(0,'')
+    accuracy_input.grid(row = 2 , column=1, pady = 10)
+    
+    Label(frame, text="Pass the values (2,2):").grid(row = 3)
+    values_input = Entry(frame, width = 20, cursor = 'hand2')
+    values_input.insert(0,'')
+    values_input.grid(row = 3 , column = 1, pady = 10)
+    
+    Label(frame, text="How many unkowns:").grid(row = 4)
+    how_many_uknowns_input = Entry(frame, width = 20, cursor = 'hand2')
+    how_many_uknowns_input.insert(0,'')
+    how_many_uknowns_input.grid(row = 4 , column = 1, pady = 10)    
+     
+    Label(frame, text="Pass the points:").grid(row = 5)
+    points_input = Entry(frame, width = 20, cursor = 'hand2')
+    points_input.insert(0,'')
+    points_input.grid(row = 5 , column = 1, pady = 10)    
+         
+    
+    Button_submit = Button(frame, text = "Submit", command = lambda: set_accuracy_values(function_input.get(), 
+                                                                               accuracy_input.get(), 
+                                                                               values_input.get(),
+                                                                               how_many_uknowns_input.get(),
+                                                                               points_input.get()
+                                                                               ))
+    Button_submit.grid(row=6 , column=1)
+
+def choose_main_condition(chosen_condition):
+    if (chosen_condition == "Get the result based on  accuracy") :
+        accuracy_chosen()
+    elif(chosen_condition == "Get the result based on  number of iterations"):
+        iterations_chosen()
+    else:
+        something_went_wront(chosen_condition)
+
+def something_went_wront(chosen_condition):
+    Label(frame, text="Sorry! Something went wrong. Here is the codition: " + chosen_condition).grid(row=0)
+
+def set_accuracy_values(function, accuracy, values, hmu, points):
+    set_accuracy(accuracy)
+    set_function(function)
+    set_values(values)
+    set_hmu(hmu)
+    set_points(points)
+    fun = convert_function(function_str)
+    values = convert_values(values)
+    FR = Fletcher_Reeves(points, float(e), fun, values, how_many_uknowns, function_str)
+
+
+def set_iterations_values(function, interations, values, hmu, points):
+    set_accuracy('0.00001')
+    set_iterations(interations)
+    set_function(function)
+    set_values(values)
+    set_hmu(hmu)
+    set_points(points)
+    fun = convert_function(function_str)
+    values = convert_values(values)
+    FR = Fletcher_Reeves(points, float(e), fun, values, how_many_uknowns, function_str)
+
+def set_points(input_string):
+    global points
+    points = input_string
+
+def set_hmu(input_string):
+    global how_many_uknowns
+    how_many_uknowns = int(input_string)
+    
+def set_accuracy(input_string):
+    global e
+    e = input_string
+
+def set_values(input_string):
+    global values
+    values = input_string
+    
+def set_function(input_string):
+    global function_str
+    function_str = input_string
+
+def set_iterations(input_string):
+    global iterations_limit
+    iterations_limit = float(input_string)    
+
 ######################### CONVERSION #############################
 def convert_function(fun):
     letter = 'a'
@@ -99,19 +234,52 @@ class Fletcher_Reeves:
 
         range_begin = self.points[0] + 50
         range_end = self.points[1] - 50
-        while norm > self.epsylon:
+        iterations = 0
+        function_values = []
+        lowest_norm = 0
+        iterations_since_finding_min = 0
+        
+        while (norm > self.epsylon and iterations < iterations_limit):
             str_vals = self.find_values_for_min(self.derivative)
-            #str_fminfun = self.create_new_fminmsearch(self.derivative)
             str_fun = self.createn_new_fun(self.function_str ,str_vals)
+            str_fminfun = self.create_new_fminmsearch(str_fun)
+            print("str_fminfun", str_fminfun)
             dich = dichotomy(str_fun, range_begin, range_end)
             min_alpha = dichotomy.get_results(dich)
             min_alpha = np.average(min_alpha, axis = 0)
+            xopt = eng.fminsearch(str_fminfun, self.points[0])
+            print("   min_alpha result =>", min_alpha)
+            print("   fminsearch result =>", xopt)
             self.calculate_new_value(min_alpha)
-            norm = math.sqrt(pow(self.d[0], 2) + pow(self.d[1], 2)) 
+            norm = math.sqrt(pow(self.d[0], 2) + pow(self.d[1], 2))
             print(norm)
             self.count_eta(fun)
             self.count_next_d(fun)
+            iterations = iterations + 1
+            if iterations == 1:
+                lowest_norm = norm + 1
+            if iterations % 5 == 0:
+                function_values.append(norm)
+            iterations_since_finding_min += 1
+            if lowest_norm > norm:
+                print("****************************** I FOUND MINIMUM ******************************")
+                lowest_norm = norm
+                iterations_since_finding_min = 0
 
+            print(iterations)
+        
+        local_range = range(0, math.floor(iterations/5))
+        x_array = []
+        Label(frame, text = "Results ").grid(row = 5, column = 2 )
+        Label(frame, text = "FR result: ").grid(row = grid, column = column)
+        Label(frame, text = ( results[j], results[j+1])).grid(row = grid)
+        Label(frame, text = "Range end: ").grid(row = grid, column = column + 1)       
+        Label(frame, text = ( results[j], results[j+1])).grid(row = grid)
+        for i in local_range:
+            x_array.append(i)
+        plt.plot(x_array,function_values, 'ro')
+        plt.grid()  
+        plt.show()            
         return 1
 
     def createn_new_fun(self, fun, vals):
@@ -119,8 +287,7 @@ class Fletcher_Reeves:
         local_range = range(0 ,how_many_uknowns)
         for i in local_range:
             fun = fun.replace( chr(ord(letter) + i), vals[i] )
-        return fun        
-        
+        return fun
         
     def count_next_d(self, fun):
         local_range = range(0 ,how_many_uknowns)
@@ -173,21 +340,17 @@ class Fletcher_Reeves:
                 return 0
         return results
 
-    def create_new_fminmsearch(self, fun):
-        function_str = str(fun)
+    def create_new_fminmsearch(self, str_fun):
+        function_str = str(str_fun)
+        print("str_fun", function_str)
         local_range = range(0 ,how_many_uknowns)
-        for i in local_range:
-            if (function_str.find("x[" + str(i) + "]", 0) != -1):
-                letter_value = str(self.values[i])
-                d_value = str(self.d[i])
-                new_value = letter_value + "+" + "x" + "*" + d_value
-                fun = str(fun)
-                fun = str(fun.replace("x[" + str(i) + "]", new_value))
-                fun = str(fun.replace("**", "^"))
-            else: 
-                print('Couldn"t create new function')
-                return 0
-        return fun
+        if (function_str.find("alpha", 0) != -1):
+            function_str = str(function_str.replace("**", "^"))
+            function_str = str(function_str.replace("alpha", "x"))
+        else: 
+            print('Couldn"t find alpha')
+            return 0
+        return function_str
 
 ########################## DICHOTOMY #########################
 class dichotomy:
@@ -204,16 +367,13 @@ class dichotomy:
         tolerance = 0.00001
         range_begin = self.rb
         range_end = self.re
-        
-            
+          
         distance = np.abs(range_begin-range_end) 
         i = 0
         while (distance >= tolerance):
             delta = distance/ 4
             frb = self.f(range_begin)
             fre = self.f(range_end)    
-            #print("frb =>",frb)
-            #print("fre =>",fre)
             if range_end < 0 :
                 range_end = 0
             if range_begin < 0 :
@@ -221,9 +381,7 @@ class dichotomy:
             if ((range_begin < 0)  and (range_end < 0)) :
                 range_begin = range_begin + 50
                 range_end = range_end - 50
-                continue     
-           # print("frb after change =>",frb)
-           # print("fre  after change=>",fre)            
+                continue             
             cl = 0.5 * (range_begin + range_end) - delta
             cr = 0.5 * (range_begin + range_end) + delta
             fcl = self.f(cl)
@@ -249,14 +407,11 @@ class dichotomy:
                 range_begin = cl              
             elif ((frb >= fcl) and (frb < fre) and (fcl > fcr)):
                 range_end = cr                    
-            distance = np.abs(range_begin-range_end)
-        #print("range_begin assignment =>",range_begin)
-        #print("range_end  assignment=>",range_end)           
+            distance = np.abs(range_begin-range_end)    
         solutions[0] = range_begin
         solutions[1] = range_end
         
         self.minimum = (abs(range_begin) + abs(range_end))/2
-        #print("results =>",solutions)
         return solutions
 
     def f(self, x):
@@ -267,29 +422,28 @@ class dichotomy:
         return eval(code)
 
     def get_results(self):
-        #print(self.result)
         return self.result
 
 
 ########################## MAIN #########################
-'''
-print("Pass the function")
-function_str = input()
-print("Pass the point")
-point = input()
-print("Pass e")
-e = input()
-print("Pass the parameter or parameters")
-parameters = input()
-'''
-function_str = "2*a**2 + 3*b**2"
-points = "1, 2" 
-e = "1"
-values = '1,3'
-how_many_uknowns = 2
-eng = matlab.engine.start_matlab ()
-eng.optimset('Display', 'off');
+root = Tk()
+root.geometry("1200x900")
+root.title("MM&MJ")
 
-fun = convert_function(function_str)
-values = convert_values(values)
-FR = Fletcher_Reeves(points, float(e), fun, values, how_many_uknowns, function_str)
+ 
+frame = Frame(root)
+B = Button(root, text = "Choose condition", command = lambda: choose_main_condition(tkvarq.get()) )
+
+options = ["Get the result based on  accuracy",
+           "Get the result based on  number of iterations"
+           ]
+
+## SELECT MENU
+tkvarq = StringVar(root)
+tkvarq.set(options[1])
+question_menu = OptionMenu(root, tkvarq, *options)
+question_menu.pack()
+B.pack()
+frame.pack()
+### DISPLAYS CHOSEN VERSION
+root.mainloop()
