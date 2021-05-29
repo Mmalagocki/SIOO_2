@@ -238,18 +238,25 @@ class Fletcher_Reeves:
         function_values = []
         lowest_norm = 0
         iterations_since_finding_min = 0
-        
-        while (norm > self.epsylon and iterations < iterations_limit):
+        #print("type of self.points =========>", type(0))
+        while (norm > self.epsylon):
+        #while iterations_since_finding_min < 200 and iterations < iterations_limit:
             str_vals = self.find_values_for_min(self.derivative)
             str_fun = self.createn_new_fun(self.function_str ,str_vals)
             str_fminfun = self.create_new_fminmsearch(str_fun)
-            print("str_fminfun", str_fminfun)
+            #print("str_fminfun", str_fminfun)
             dich = dichotomy(str_fun, range_begin, range_end)
             min_alpha = dichotomy.get_results(dich)
             min_alpha = np.average(min_alpha, axis = 0)
-            xopt = eng.fminsearch(str_fminfun, self.points[0])
+            #xopt = eng.fminsearch(str_fminfun, float(0))
+            function = lambda alpha: eval(str_fun)
+            xopt = opt.fminbound(function, range_end, range_begin)
             print("   min_alpha result =>", min_alpha)
             print("   fminsearch result =>", xopt)
+            our_result = self.function_value(min_alpha, str_fun)
+            fmin_bound_result = self.function_value(xopt, str_fun)
+            print("   our_result result =>", our_result)
+            print("   fmin_bound_result result =>", fmin_bound_result)            
             self.calculate_new_value(min_alpha)
             norm = math.sqrt(pow(self.d[0], 2) + pow(self.d[1], 2))
             print(norm)
@@ -258,18 +265,24 @@ class Fletcher_Reeves:
             iterations = iterations + 1
             if iterations == 1:
                 lowest_norm = norm + 1
+            
             if iterations % 5 == 0:
                 function_values.append(norm)
+            
             iterations_since_finding_min += 1
+            
             if lowest_norm > norm:
                 print("****************************** I FOUND MINIMUM ******************************")
                 lowest_norm = norm
                 iterations_since_finding_min = 0
+            print("     lowest_norm ==>", lowest_norm)
 
             print(iterations)
         
         local_range = range(0, math.floor(iterations/5))
         x_array = []
+        print("lowest_norm =======>", lowest_norm)
+        '''
         Label(frame, text = "Results ").grid(row = 5, column = 2 )
         Label(frame, text = "FR result: ").grid(row = grid, column = column)
         Label(frame, text = ( results[j], results[j+1])).grid(row = grid)
@@ -279,9 +292,18 @@ class Fletcher_Reeves:
             x_array.append(i)
         plt.plot(x_array,function_values, 'ro')
         plt.grid()  
-        plt.show()            
-        return 1
+        plt.show()
+        '''
+        return lowest_norm
 
+    def function_value (self, min_alpha, function):
+        function_str = str(function)
+        function_str = function_str.replace( "alpha", str(min_alpha))
+        #function = lambda alpha: eval(str_fun)
+        result = eval(function_str)
+        return result
+        
+    
     def createn_new_fun(self, fun, vals):
         letter = 'a'
         local_range = range(0 ,how_many_uknowns)
@@ -372,6 +394,8 @@ class dichotomy:
         i = 0
         while (distance >= tolerance):
             delta = distance/ 4
+            #print("     range_end ==>", range_end)
+            #print("     range_begin ==>", range_begin)
             frb = self.f(range_begin)
             fre = self.f(range_end)    
             if range_end < 0 :
@@ -446,4 +470,16 @@ question_menu.pack()
 B.pack()
 frame.pack()
 ### DISPLAYS CHOSEN VERSION
-root.mainloop()
+#root.mainloop()
+
+function_str = "2*a**2 + 3*b**2"
+points = "-10, 20" 
+e = "1"
+parameters = '1,3'
+how_many_uknowns = 2
+eng = matlab.engine.start_matlab ()
+eng.optimset('Display', 'off');
+
+fun = convert_function(function_str)
+parameters = convert_values(parameters)
+FR = Fletcher_Reeves(points, float(e), fun, parameters, how_many_uknowns, function_str)
