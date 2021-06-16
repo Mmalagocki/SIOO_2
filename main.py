@@ -111,6 +111,7 @@ def something_went_wront(chosen_condition):
 def set_accuracy_values(function, accuracy, values, hmu, points):
     set_accuracy(accuracy)
     set_function(function)
+    set_iterations(1000000)
     set_values(values)
     set_hmu(hmu)
     set_points(points)
@@ -152,7 +153,7 @@ def set_function(input_string):
 
 def set_iterations(input_string):
     global iterations_limit
-    iterations_limit = float(input_string)    
+    iterations_limit = float(input_string)
 
 ######################### CONVERSION #############################
 def convert_function(fun):
@@ -202,6 +203,7 @@ class gradient:
 ########################## FLETCHER-REEVES #########################  
 class Fletcher_Reeves:
     def __init__(self, points, e, fun, values, n_order, function_str):
+        #### Initialization ####
         points = convert_values(points)
         return_results = []
         self.eta = 0
@@ -220,16 +222,16 @@ class Fletcher_Reeves:
         self.calculate()
         
     def calculate(self):
+        #### Step 2 ####
+
         local_range = range(0 ,how_many_uknowns)
         fun =  lambda x: eval(self.fun)
         d = -nd.Gradient(fun)([self.values[0], self.values[1]])
-        #print("nd.Gradient(fun)([self.values[0], self.values[1]]) ==>", nd.Gradient(fun)([self.values[0], self.values[1]]))
-        #print("d ==>", d)
         self.d = d
         grad = gradient(self.function_str)
         self.derivative = gradient.get_derivative_fun(grad)
         local_range = range(0 ,how_many_uknowns)
-        for i in local_range:        
+        for i in local_range:
             self.derivative[i] = convert_function(self.derivative[i])
         range_begin = 0
         range_end = 0
@@ -242,42 +244,38 @@ class Fletcher_Reeves:
         xopt = [None]*how_many_uknowns
         lowest_norm = 0
         iterations_since_finding_min = 0
-        #print("derivative =========>", self.derivative)
-        while (norm > self.epsylon):
-        #while iterations_since_finding_min < 200 and iterations < iterations_limit:
+
+        #### Step 3 ####
+
+        #while norm > self.epsylon and iterations < iterations_limit:
+        while norm > self.epsylon:
             str_vals = self.find_values_for_min(self.derivative)
-            #print("str_vals", str_vals)
             str_fun = self.createn_new_fun(self.function_str ,str_vals)
-            str_fminfun = self.create_new_fminmsearch(str_fun)
             print("str_fun", str_fun)
             dich = dichotomy(str_fun, range_begin, range_end)
             min_alpha = dichotomy.get_results(dich)
             min_alpha = np.average(min_alpha, axis = 0)
-            #xopt = eng.fminsearch(str_fminfun, float(0))
             function = lambda alpha: eval(str_fun)
-            #for i in range(0 ,len(str_vals)):
-            #function = lambda alpha: eval('1.0+alpha*-2.0000000000000004**2')
             xopt = opt.fminbound(function, self.points[0],self.points[1])
             print("   min_alpha result =>", min_alpha)
             print("   xopt result =>", xopt)
             our_result = self.function_value(min_alpha, str_fun)
-            #fmin_bound_result = self.function_value(xopt, str_fun)
-            #print("   our_result result =>", our_result)
-            #print("   fmin_bound_result result =>", fmin_bound_result)            
+
+            #### Step 4 ####
+
             self.calculate_new_value(min_alpha)
-            norm = math.sqrt(pow(self.d[0], 2) + pow(self.d[1], 2))
+            norm = LA.norm(self.d)
             print("Current nom ==>", norm)
-            #print("self.d", self.d)
-            #print("Vector length ==>", LA.norm(-self.d))
+
+            #### Step 5 ####
+
             self.count_eta(fun)
             self.count_next_d(fun)
             iterations = iterations + 1
             if iterations == 1:
                 lowest_norm = norm + 1
             function_values.append(norm)
-            
-            iterations_since_finding_min += 1
-            
+
             if lowest_norm > norm:
                 print("****************************** I FOUND MINIMUM ******************************")
                 lowest_norm = norm
@@ -285,17 +283,10 @@ class Fletcher_Reeves:
             print("     lowest_norm ==>", lowest_norm)
 
             print(iterations)
-        
+
+        #### Drawing Plot ####
         local_range = range(0, math.floor(iterations))
         x_array = []
-        #print("lowest_norm =======>", lowest_norm)
-        '''
-        Label(frame, text = "Results ").grid(row = 5, column = 2 )
-        Label(frame, text = "FR result: ").grid(row = grid, column = column)
-        Label(frame, text = ( results[j], results[j+1])).grid(row = grid)
-        Label(frame, text = "Range end: ").grid(row = grid, column = column + 1)       
-        Label(frame, text = ( results[j], results[j+1])).grid(row = grid)
-        '''
         for i in local_range:
             x_array.append(i)
         plt.plot(x_array,function_values, 'ro')
@@ -303,71 +294,93 @@ class Fletcher_Reeves:
         plt.show()
         return lowest_norm
 
+    '''
+    Function used to calculate value of function in point
+
+    float: min_alpha - value local minimum found with optimizing function
+    string: function - string of fuction with all values set except alpha
+    '''
     def function_value (self, min_alpha, function):
         function_str = str(function)
         function_str = function_str.replace( "alpha", str(min_alpha))
-        #function = lambda alpha: eval(str_fun)
         result = eval(function_str)
         return result
-        
-    
+
+
+    '''
+    Function used to swap unknowns with xk + alhpa * d form
+
+    array of strings: vals - value local minimum found with optimizing function
+    string: fun - string of fuction
+    '''
     def createn_new_fun(self, fun, vals):
         letter = 'a'
         local_range = range(0 ,how_many_uknowns)
         for i in local_range:
             fun = fun.replace( chr(ord(letter) + i), vals[i] )
         return fun
-        
+
+    '''
+    Function used to find new direction of minimalization
+
+    string: fun - string of fuction
+    '''
     def count_next_d(self, fun):
         local_range = range(0 ,how_many_uknowns)
         letter = 'a'
-        #print('count_next_d')
-        #print("[self.values[0] ", self.values[0])
-        #print("[self.values[1] ", self.values[1])
         xk_plus_1_value = nd.Gradient(fun)([self.values[0], self.values[1]])
-        #print("xk_plus_1_value", xk_plus_1_value)
-        #print("self.eta ", self.eta )
-        #print("self.d", self.d)
         next_d = -xk_plus_1_value + self.eta * self.d
         self.d = next_d
 
+    '''
+    Function used to calculate eta
+
+    string: fun - string of fuction
+    '''
     def count_eta(self, fun):
-        local_range = range(0 ,how_many_uknowns)
-        for i in local_range:
-            xk_value = nd.Gradient(fun)([self.values[2], self.values[3]])
-            #print('xk_value', xk_value)
-            #print('self.values[0]', self.values[0])
-            #print('self.values[1]', self.values[1])
+        if how_many_uknowns != 1:
+            local_range = range(0 ,how_many_uknowns)
+            for i in local_range:
+                xk_value = nd.Gradient(fun)([self.values[2], self.values[3]])
+                xk_value = np.array(xk_value)
+                xk_value_product = np.dot(xk_value, xk_value)
+                
+                xk_plus_1_value = nd.Gradient(fun)([self.values[0], self.values[1]])         
+                xk_plus_1_value = np.array(xk_plus_1_value)
+                xk_product_plus_1 = np.dot(xk_plus_1_value, xk_plus_1_value)
+                
+                single_eta = np.divide(xk_product_plus_1, xk_value_product)
+                self.eta = single_eta
+        else:
+            xk_value = nd.Gradient(fun)(self.values[1])
             xk_value = np.array(xk_value)
             xk_value_product = np.dot(xk_value, xk_value)
             
-            xk_plus_1_value = nd.Gradient(fun)([self.values[0], self.values[1]])
-            #print('xk_plus_1_value', xk_plus_1_value)
-            #print('[self.values[2]', self.values[2])
-            #print('self.values[3]', self.values[3])            
+            xk_plus_1_value = nd.Gradient(fun)(self.values[0])         
             xk_plus_1_value = np.array(xk_plus_1_value)
             xk_product_plus_1 = np.dot(xk_plus_1_value, xk_plus_1_value)
             
             single_eta = np.divide(xk_product_plus_1, xk_value_product)
-            self.eta = single_eta
-            '''
-    def calculate_next_argument(self):
-        local_range = range(0 ,how_many_uknowns)
-        for i in local_range:
-            svalue = str(self.values[i] + min_alpha*self.d[i]
-            self.mindir[i] = str(svalue)
-            '''
+            self.eta = single_eta            
+
+    '''
+    Function used to calculate value of function in point
+
+    float: min_alpha - value local minimum found with optimizing function
+    '''
     def calculate_new_value(self, min_alpha):
         local_range = range(0 ,how_many_uknowns)
         function_str = self.derivative
         for i in local_range:
             self.values[i + how_many_uknowns] = self.values[i]
-            #print("self.values[i]", self.values[i])
-            #print("self.d[i]", self.d[i])
-            #print("min_alpha", min_alpha)
             value = self.values[i] + min_alpha*self.d[i]
             self.values[i] = value
 
+    '''
+    Function used to swap unknowns with xk + alhpa * d form
+
+    float: min_alpha - value local minimum found with optimizing function
+    '''
     def find_values_for_min(self, fun):
         function_str = str(fun)
         results = [0] * how_many_uknowns
@@ -382,17 +395,6 @@ class Fletcher_Reeves:
                 return 0
         return results
 
-    def create_new_fminmsearch(self, str_fun):
-        function_str = str(str_fun)
-        #print("str_fun", function_str)
-        local_range = range(0 ,how_many_uknowns)
-        if (function_str.find("alpha", 0) != -1):
-            function_str = str(function_str.replace("**", "^"))
-            function_str = str(function_str.replace("alpha", "x"))
-        else: 
-            print('Couldn"t find alpha')
-            return 0
-        return function_str
 
 ########################## DICHOTOMY #########################
 class dichotomy:
@@ -414,10 +416,6 @@ class dichotomy:
         i = 0
         while (distance >= tolerance):
             delta = distance/ 4
-            '''
-            print("     range_end ==>", range_end)
-            print("     range_begin ==>", range_begin)
-            '''
             frb = self.f(range_begin)
             fre = self.f(range_end)
             if range_end < 0 :
@@ -438,14 +436,7 @@ class dichotomy:
             cr = 0.5 * (range_begin + range_end) + delta
             fcl = self.f(cl)
             fcr = self.f(cr)
-            '''
-            print("     fcl ==>", fcl)
-            print("     fcr ==>", fcr)
-            print("     frb ==>", frb)
-            print("     fre ==>", fre)
-            
-            '''
-        
+
             if ((frb >= fcl) and (frb >= fre) and (fcl <= fcr)) :
                 range_begin = cl
             elif ((frb >= fcl) and (frb >= fre) and (fcl >= fcr)) :
@@ -505,8 +496,8 @@ question_menu.pack()
 B.pack()
 frame.pack()
 ### DISPLAYS CHOSEN VERSION
-#root.mainloop()
-
+root.mainloop()
+'''
 function_str = "4*a**2 + 4*b**2"
 points = "-2, 2" 
 e = "0.01"
@@ -518,3 +509,4 @@ eng.optimset('Display', 'off');
 fun = convert_function(function_str)
 parameters = convert_values(parameters)
 FR = Fletcher_Reeves(points, float(e), fun, parameters, how_many_uknowns, function_str)
+'''
